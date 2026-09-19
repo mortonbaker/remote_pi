@@ -54,7 +54,7 @@ android {
         // back to API 23, but the project as a whole standardizes on
         // 14+ for modern biometry / themed icons / Credential Manager
         // (future) — see plano 23 § "Decisões fixadas".
-        minSdk = 34
+        minSdk = 30  // fork: Block Store works back to 23; 30 lets the 2019 Galaxy Tab A (Android 11) install
     }
 
     testOptions {

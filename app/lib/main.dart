@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/config/dependencies.dart';
 import 'package:app/data/local/boxes.dart';
 import 'package:app/data/mesh/mesh_sync_service.dart';
@@ -9,6 +11,7 @@ import 'package:app/pairing/storage.dart';
 import 'package:app/routing/adaptive.dart';
 import 'package:app/routing/app_router.dart';
 import 'package:app/ui/core/themes/themes.dart';
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -32,22 +35,41 @@ class RemotePiApp extends StatefulWidget {
 }
 
 class _RemotePiAppState extends State<RemotePiApp> with WidgetsBindingObserver {
+  // Deep-link pairing: a `remotepi://pair?...` URI delivered by the OS (tapped
+  // notification, browser link, `am start -d`) is parked here; the router's
+  // redirect consumes it once boot has finished, so a cold start via link
+  // lands on /pair instead of being lost behind the /boot splash.
+  final _pendingPairLink = ValueNotifier<String?>(null);
+  final _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSub;
+
   late final _router = buildRouter(
     injector.get<PairingStorage>(),
     injector.get<ConnectionManager>(),
     injector.get<Preferences>(),
     injector.get<OwnerIdentityBridge>(),
     injector.get<MeshSyncService>(),
+    pendingPairLink: _pendingPairLink,
   );
+
+  void _onLink(Uri? uri) {
+    if (uri == null) return;
+    if (uri.scheme != 'remotepi' || uri.host != 'pair') return;
+    _pendingPairLink.value = uri.toString();
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // ignore: unawaited_futures
+    _appLinks.getInitialLink().then(_onLink);
+    _linkSub = _appLinks.uriLinkStream.listen(_onLink);
   }
 
   @override
   void dispose() {
+    _linkSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     disposeDependencies();
     super.dispose();

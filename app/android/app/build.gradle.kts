@@ -41,7 +41,7 @@ android {
         // plugin requires API 34 (Block Store + modern biometry), so
         // the app inherits the same floor. Bump intentional, recorded
         // in the plano.
-        minSdk = 34
+        minSdk = 30  // Galaxy Tab A (2019) runs Android 11; nothing in the app needs 34
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

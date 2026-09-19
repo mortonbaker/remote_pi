@@ -38,6 +38,17 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Deep-link pairing. The QR payload is a `remotepi://pair?...` URI;
+                 accepting it directly lets a device pair without a camera:
+                 a tapped notification, a link in a browser, an MDM push, or
+                 `adb shell am start -a android.intent.action.VIEW -d <uri>`
+                 from a headless host. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="remotepi" android:host="pair"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

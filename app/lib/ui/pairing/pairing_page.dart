@@ -16,7 +16,11 @@ import 'package:provider/provider.dart';
 // ---------------------------------------------------------------------------
 
 class PairingPage extends StatefulWidget {
-  const PairingPage({super.key});
+  /// A `remotepi://pair?...` URI handed in by a deep link. When set, it is
+  /// submitted on first frame through the same path as a camera scan.
+  final String? initialRaw;
+
+  const PairingPage({super.key, this.initialRaw});
 
   @override
   State<PairingPage> createState() => _PairingPageState();
@@ -29,6 +33,17 @@ class _PairingPageState extends State<PairingPage> {
   // is rebroadcast on every `applyNickname` emit, and we only want to
   // open the sheet once per pairing.
   bool _postPairStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final raw = widget.initialRaw;
+    if (raw != null && raw.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _submitRaw(raw);
+      });
+    }
+  }
 
   @override
   void dispose() {

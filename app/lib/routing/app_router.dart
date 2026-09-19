@@ -137,8 +137,9 @@ GoRouter buildRouter(
   ConnectionManager conn,
   Preferences prefs,
   OwnerIdentityBridge ownerBridge,
-  MeshSyncService meshSync,
-) {
+  MeshSyncService meshSync, {
+  ValueNotifier<String?>? pendingPairLink,
+}) {
   final boot = _BootState();
 
   // Plan 23 — watch for Owner-key drift on the sync surface. When the
@@ -185,7 +186,9 @@ GoRouter buildRouter(
 
   return GoRouter(
     initialLocation: '/boot',
-    refreshListenable: boot,
+    refreshListenable: pendingPairLink == null
+        ? boot
+        : Listenable.merge([boot, pendingPairLink]),
     redirect: (context, state) {
       if (!boot.ready) return '/boot';
       // Sync-required gate is sticky until the user toggles iCloud /
@@ -202,6 +205,13 @@ GoRouter buildRouter(
       // even if peers are empty. Home has a first-pair empty state
       // that covers that case more cleanly than re-running the welcome
       // wizard a second time.
+      // Deep-link pairing (see main.dart): a parked `remotepi://pair` URI
+      // wins over every other destination exactly once, then clears.
+      final pending = pendingPairLink?.value;
+      if (pending != null) {
+        pendingPairLink!.value = null;
+        return Uri(path: '/pair', queryParameters: {'raw': pending}).toString();
+      }
       final shouldOnboard = boot.identityWasGenerated && !boot.hasPeer;
       final target = shouldOnboard ? '/onboarding' : '/home';
       if (state.uri.path == '/sync-required' || state.uri.path == '/boot') {
@@ -308,8 +318,9 @@ GoRouter buildRouter(
       // QR pairing flow
       GoRoute(
         path: '/pair',
-        builder: (ctx, st) =>
-            ViewmodelProvider<PairingViewModel>(child: const PairingPage()),
+        builder: (ctx, st) => ViewmodelProvider<PairingViewModel>(
+          child: PairingPage(initialRaw: st.uri.queryParameters['raw']),
+        ),
       ),
 
       // Onboarding (plan 14) — 3-step flow shown when the app has
