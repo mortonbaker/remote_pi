@@ -54,6 +54,7 @@ class _RemotePiAppState extends State<RemotePiApp> with WidgetsBindingObserver {
 
   void _onLink(Uri? uri) {
     if (uri == null) return;
+    debugPrint('[deeplink] received scheme=${uri.scheme} host=${uri.host}');
     if (uri.scheme != 'remotepi' || uri.host != 'pair') return;
     _pendingPairLink.value = uri.toString();
   }

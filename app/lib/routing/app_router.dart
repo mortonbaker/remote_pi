@@ -210,6 +210,7 @@ GoRouter buildRouter(
       final pending = pendingPairLink?.value;
       if (pending != null) {
         pendingPairLink!.value = null;
+        debugPrint('[deeplink] redirecting to /pair from ${state.uri.path}');
         return Uri(path: '/pair', queryParameters: {'raw': pending}).toString();
       }
       final shouldOnboard = boot.identityWasGenerated && !boot.hasPeer;

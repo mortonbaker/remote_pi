@@ -37,12 +37,29 @@ class _PairingPageState extends State<PairingPage> {
   @override
   void initState() {
     super.initState();
-    final raw = widget.initialRaw;
-    if (raw != null && raw.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _submitRaw(raw);
-      });
-    }
+    _scheduleDeepLink(widget.initialRaw);
+  }
+
+  @override
+  void didUpdateWidget(covariant PairingPage old) {
+    super.didUpdateWidget(old);
+    // Same route, new link: GoRouter updates this page in place instead of
+    // rebuilding it, so initState never runs again.
+    if (widget.initialRaw != old.initialRaw) _scheduleDeepLink(widget.initialRaw);
+  }
+
+  void _scheduleDeepLink(String? raw) {
+    if (raw == null || raw.isEmpty) return;
+    debugPrint('[deeplink] PairingPage got a link, submitting after first frame');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Bypass the scanner guard: a deep link is an explicit submit even if
+      // an earlier attempt already disarmed the camera.
+      setState(() => _scannerActive = false);
+      _scanner.stop().catchError((_) {});
+      debugPrint('[deeplink] onQrScanned');
+      context.read<PairingViewModel>().onQrScanned(raw);
+    });
   }
 
   @override
