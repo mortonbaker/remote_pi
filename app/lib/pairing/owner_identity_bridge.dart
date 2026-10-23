@@ -69,7 +69,26 @@ class OwnerIdentityBridge extends ChangeNotifier {
   /// throws [SyncUnavailable] when the platform sync surface genuinely
   /// can't hold the key (e.g. Android Block Store without backup), and
   /// only that verdict sends the router to /sync-required.
-  Future<OwnerIdentityBootResult> boot() async {
+  /// Set when a device owner ships the identity as managed config (see
+  /// managed_pairing.dart). It wins over whatever the platform store holds
+  /// and is never replaced by the platform-sync watcher.
+  OwnerIdentity? _managed;
+
+  Future<OwnerIdentityBootResult> boot({OwnerIdentity? managed}) async {
+    if (managed != null) {
+      _managed = managed;
+      _current = managed;
+      try {
+        final loaded = await _store.load();
+        if (loaded == null || !_bytesEqual(loaded.ownerPk, managed.ownerPk)) {
+          await _store.save(managed);
+        }
+      } catch (_) {
+        // Best-effort: the managed config is the source of truth and is
+        // re-read on every launch, so a failed platform write is harmless.
+      }
+      return IdentityReady(managed, generated: false);
+    }
     try {
       final loaded = await _store.load();
       if (loaded != null) {
@@ -147,6 +166,7 @@ class OwnerIdentityBridge extends ChangeNotifier {
   void startWatching({required Future<void> Function() onReset}) {
     _watchSub?.cancel();
     _watchSub = _store.watch().listen((incoming) async {
+      if (_managed != null) return;
       final current = _current;
       if (current == null) {
         _current = incoming;

@@ -2,6 +2,7 @@ import 'package:app/config/dependencies.dart';
 import 'package:app/data/mesh/mesh_sync_service.dart';
 import 'package:app/data/preferences/preferences.dart';
 import 'package:app/data/transport/connection_manager.dart';
+import 'package:app/pairing/managed_pairing.dart';
 import 'package:app/pairing/owner_identity_bridge.dart';
 import 'package:app/pairing/storage.dart';
 import 'package:app/routing/adaptive.dart';
@@ -66,7 +67,10 @@ class _BootState extends ChangeNotifier {
     // Owner-key (loaded or freshly generated). If sync is off, the
     // router redirects to /sync-required and the user retries from
     // there once they flip the toggle in Settings.
-    final ownerResult = await ownerBridge.boot();
+    // Managed devices (Guardian) ship identity + pairing as app
+    // restrictions; when present the app is paired before first paint.
+    final managed = await ManagedPairing.load();
+    final ownerResult = await ownerBridge.boot(managed: managed?.identity);
     if (ownerResult is SyncUnavailableResult) {
       _syncAvailable = false;
       _ready = true;
@@ -89,6 +93,8 @@ class _BootState extends ChangeNotifier {
     // is logged inside the service and we fall back gracefully on the
     // local cache.
     await meshSync.pullOnDemand();
+
+    if (managed != null) await managed.apply(storage, prefs);
 
     final peers = await storage.listPeers();
     _hasPeer = peers.isNotEmpty;
